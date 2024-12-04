@@ -1,20 +1,20 @@
-// ignore_for_file: constant_identifier_names
-
 import 'package:get/get.dart';
 
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
+import '../modules/login/bindings/login_binding.dart';
+import '../modules/login/views/login_view.dart';
 import '../modules/send_mesege1/bindings/send_mesege1_binding.dart';
 import '../modules/send_mesege1/views/send_mesege1_view.dart';
-import '../modules/send_mesege2/bindings/send_mesege2_binding.dart';
-import '../modules/send_mesege2/views/send_mesege2_view.dart';
+
+// ignore_for_file: constant_identifier_names
 
 part 'app_routes.dart';
 
 class AppPages {
   AppPages._();
 
-  static const INITIAL = Routes.HOME;
+  static const INITIAL = Routes.LOGIN;
 
   static final routes = [
     GetPage(
@@ -28,9 +28,9 @@ class AppPages {
       binding: SendMesege1Binding(),
     ),
     GetPage(
-      name: _Paths.SEND_MESEGE2,
-      page: () => const SendMesege2View(),
-      binding: SendMesege2Binding(),
+      name: _Paths.LOGIN,
+      page: () => const LoginView(),
+      binding: LoginBinding(),
     ),
   ];
 }

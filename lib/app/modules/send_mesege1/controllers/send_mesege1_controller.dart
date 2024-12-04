@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'package:dart_amqp/dart_amqp.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rabbitmq_client/app/data/local.dart';
 
 import '../../../data/models/model_chat.dart';
+import '../../../data/response_call.dart';
 
 class SendMesege1Controller extends GetxController {
   // final String typingQueue = "tippingqueue";
@@ -13,38 +15,68 @@ class SendMesege1Controller extends GetxController {
   TextEditingController textController = TextEditingController();
   FocusNode focusNode = FocusNode();
   RxString textConnection = "Connect".obs;
-  final String queueName = 'notifikasiqueue';
   final String exchangeName = 'notifikasi_exc';
-  final String routingPush = 'pesan>page2';
-  final String routingRecevi = 'pesan>page1';
+  String? routingKey;
+  String? queueName;
+  final String admin = 'admin';
+  final String user = 'user';
   Client? _client;
   Channel? _channel;
   Consumer? _consumer;
   bool durable = true;
+  String? datadiri;
   RxList<ModelChat> receivedMessages = <ModelChat>[].obs;
 
   @override
   void onInit() {
     super.onInit();
     connectRabbitMQ();
+    fetchDataProfile();
+  }
+
+  Future<void> fetchDataProfile() async {
+    getDetailProfile();
+  }
+
+  Future<void> getDetailProfile() async {
+    try {
+      final data = await LocalStorage.getDataMe();
+      if (data.isNotEmpty) {
+        datadiri = data;
+        queueName = data;
+        routingKey = data;
+      }
+    } catch (e) {
+      debugPrint("$e");
+    }
   }
 
   Future<bool> sendMessage(String message) async {
-    final Map<String, dynamic> messageMap = {
-      "sender": "page1",
-      'message': message,
-    };
-    try {
-      final Exchange exchange = await _channel!
-          .exchange(exchangeName, ExchangeType.DIRECT, durable: true);
-      ModelChat chatMessage = ModelChat.fromJson(messageMap);
-      receivedMessages.add(chatMessage);
-      exchange.publish(messageMap, routingPush);
+    if (datadiri!.isNotEmpty) {
+      final Map<String, dynamic> messageMap = {
+        "sender": datadiri,
+        'message': message,
+      };
+      try {
+        final Exchange exchange = await _channel!
+            .exchange(exchangeName, ExchangeType.DIRECT, durable: true);
+        ModelChat chatMessage = ModelChat.fromJson(messageMap);
+        receivedMessages.add(chatMessage);
+        if (datadiri == "admin") {
+          exchange.publish(messageMap, "$routingKey>$user");
+          debugPrint('admin Sent: $message');
+        } else {
+          exchange.publish(messageMap, "$routingKey>$admin");
+          debugPrint('user Sent: $message');
+        }
 
-      debugPrint('Sent: $message');
-      return true;
-    } catch (e) {
-      debugPrint('Error sending message: $e');
+        return true;
+      } catch (e) {
+        debugPrint('Error sending message: $e');
+        return false;
+      }
+    } else {
+      debugPrint('Data profile is empty. Cannot send message.');
       return false;
     }
   }
@@ -54,7 +86,13 @@ class SendMesege1Controller extends GetxController {
       final Exchange exchange = await _channel!
           .exchange(exchangeName, ExchangeType.DIRECT, durable: true);
 
-      exchange.publish("true", routingPush);
+      if (datadiri == "admin") {
+        exchange.publish("true", "$routingKey>$user");
+        debugPrint('Sent admin: ON TYPING true');
+      } else {
+        exchange.publish("true", "$routingKey>$admin");
+        debugPrint('Sent user: ON TYPING true');
+      }
 
       return true;
     } catch (e) {
@@ -68,7 +106,13 @@ class SendMesege1Controller extends GetxController {
       final Exchange exchange = await _channel!
           .exchange(exchangeName, ExchangeType.DIRECT, durable: true);
 
-      exchange.publish("false", routingPush);
+      if (datadiri == "admin") {
+        exchange.publish("false", "$routingKey>$user");
+        debugPrint('Sent admin: ON TYPING false');
+      } else {
+        exchange.publish("false", "$routingKey>$admin");
+        debugPrint('Sent user: ON TYPING false');
+      }
       debugPrint('Sent: ON TYPING false');
 
       return true;
@@ -106,14 +150,17 @@ class SendMesege1Controller extends GetxController {
 
       // Store queue reference
       Queue queue = await _channel!.queue(
-        queueName,
+        queueName!,
         durable: durable,
         arguments: {
           'x-queue-type': 'quorum',
         },
       );
-
-      await queue.bind(exchange, routingRecevi);
+      if (datadiri == "admin") {
+        await queue.bind(exchange, "$user>$routingKey");
+      } else {
+        await queue.bind(exchange, "$admin>$routingKey");
+      }
 
       debugPrint("queue name: ${queue.name}");
 
@@ -123,17 +170,25 @@ class SendMesege1Controller extends GetxController {
         debugPrint('Received: ${message.payloadAsString}');
         debugPrint('replyTo: ${message.properties?.replyTo}');
 
-        if (message.payloadAsString != "true" &&
-            message.payloadAsString != "false") {
-          Map<String, dynamic> jsonData = jsonDecode(message.payloadAsString);
-          ModelChat chatMessage = ModelChat.fromJson(jsonData);
-          receivedMessages.add(chatMessage);
-        } else if (message.payloadAsString == "true") {
+        // Jika pesan adalah "true" atau "false", tidak perlu decode JSON
+        if (message.payloadAsString == "true") {
           typing.value = true; // Tampilkan "Mengetik"
         } else if (message.payloadAsString == "false") {
           typing.value = false; // Sembunyikan "Mengetik"
         } else {
-          debugPrint('No reply-to property specified in the incoming message');
+          // Pesan berupa JSON yang valid, dekode pesan
+          try {
+            Map<String, dynamic> jsonData = jsonDecode(message.payloadAsString);
+            String sender = jsonData['sender'];
+
+            // Periksa jika sender bukan 'datadiri'
+            if (datadiri != sender) {
+              ModelChat chatMessage = ModelChat.fromJson(jsonData);
+              receivedMessages.add(chatMessage);
+            }
+          } catch (e) {
+            debugPrint('Error decoding message: $e');
+          }
         }
       });
     } catch (e) {

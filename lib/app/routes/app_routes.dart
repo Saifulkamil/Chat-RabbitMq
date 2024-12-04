@@ -8,6 +8,7 @@ abstract class Routes {
   static const HOME = _Paths.HOME;
   static const SEND_MESEGE1 = _Paths.SEND_MESEGE1;
   static const SEND_MESEGE2 = _Paths.SEND_MESEGE2;
+  static const LOGIN = _Paths.LOGIN;
 }
 
 abstract class _Paths {
@@ -15,4 +16,5 @@ abstract class _Paths {
   static const HOME = '/home';
   static const SEND_MESEGE1 = '/send-mesege1';
   static const SEND_MESEGE2 = '/send-mesege2';
+  static const LOGIN = '/login';
 }
