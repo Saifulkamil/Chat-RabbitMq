@@ -98,7 +98,7 @@ class SendMesege1View extends GetView<SendMesege1Controller> {
                             );
                           },
                         ))),
-                SizedBox(
+                const SizedBox(
                   height: 10,
                 ),
                 Row(
@@ -134,7 +134,7 @@ class SendMesege1View extends GetView<SendMesege1Controller> {
                               }
                             }
                           },
-                          icon: Icon(Icons.send),
+                          icon: const Icon(Icons.send),
                         )),
                   ],
                 ),

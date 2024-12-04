@@ -22,15 +22,15 @@ class HomeView extends GetView<HomeController> {
                   onPressed: () {
                     Get.toNamed(Routes.SEND_MESEGE1);
                   },
-                  child: Text("mesege 1 >>>")),
-              SizedBox(
+                  child: const Text("mesege 1 >>>")),
+              const SizedBox(
                 height: 50,
               ),
               ElevatedButton(
                   onPressed: () {
                     Get.toNamed(Routes.SEND_MESEGE2);
                   },
-                  child: Text("mesege 2 >>>")),
+                  child: const Text("mesege 2 >>>")),
             ],
           ),
         ));

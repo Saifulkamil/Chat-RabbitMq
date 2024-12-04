@@ -10,9 +10,9 @@ class ModelChat {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['sender'] = this.sender;
-    data['message'] = this.message;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['sender'] = sender;
+    data['message'] = message;
     return data;
   }
 }

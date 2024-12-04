@@ -126,7 +126,7 @@ class SendMesege2Controller extends GetxController {
       );
 
       // Konsumsi pesan dari queue utama
-      _consumer = await queue!.consume();
+      _consumer = await queue.consume();
       _consumer!.listen((AmqpMessage message) {
         debugPrint('Received: ${message.payloadAsString}');
         debugPrint('replyTo: ${message.properties?.replyTo}');

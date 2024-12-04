@@ -7,13 +7,13 @@ import 'package:get/get.dart';
 import '../../../data/models/model_chat.dart';
 
 class SendMesege1Controller extends GetxController {
-  // final String typingQueue = "tipping_queue";
+  // final String typingQueue = "tippingqueue";
 
   RxBool typing = false.obs;
   TextEditingController textController = TextEditingController();
   FocusNode focusNode = FocusNode();
   RxString textConnection = "Connect".obs;
-  final String _queueName = 'notifikasi_queue';
+  final String queueName = 'notifikasiqueue';
   final String exchangeName = 'notifikasi_exc';
   final String routingPush = 'pesan>page2';
   final String routingRecevi = 'pesan>page1';
@@ -41,10 +41,10 @@ class SendMesege1Controller extends GetxController {
       receivedMessages.add(chatMessage);
       exchange.publish(messageMap, routingPush);
 
-      print('Sent: $message');
+      debugPrint('Sent: $message');
       return true;
     } catch (e) {
-      print('Error sending message: $e');
+      debugPrint('Error sending message: $e');
       return false;
     }
   }
@@ -105,20 +105,20 @@ class SendMesege1Controller extends GetxController {
       debugPrint("type exchange: ${exchange.type}");
 
       // Store queue reference
-      Queue _queue = await _channel!.queue(
-        _queueName,
+      Queue queue = await _channel!.queue(
+        queueName,
         durable: durable,
         arguments: {
           'x-queue-type': 'quorum',
         },
       );
 
-      await _queue.bind(exchange, routingRecevi);
+      await queue.bind(exchange, routingRecevi);
 
-      debugPrint("queue name: ${_queue.name}");
+      debugPrint("queue name: ${queue.name}");
 
       // Konsumsi pesan dari queue utama
-      _consumer = await _queue.consume();
+      _consumer = await queue.consume();
       _consumer!.listen((AmqpMessage message) {
         debugPrint('Received: ${message.payloadAsString}');
         debugPrint('replyTo: ${message.properties?.replyTo}');
