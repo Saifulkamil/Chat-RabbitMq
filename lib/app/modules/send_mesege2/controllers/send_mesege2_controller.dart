@@ -10,7 +10,7 @@ class SendMesege2Controller extends GetxController {
   TextEditingController textController = TextEditingController();
   FocusNode focusNode = FocusNode();
   RxString textConnection = "Connect".obs;
-  final String _queueName = 'notifikasi_queue2';
+  final String queueName = 'notifikasiqueue2';
   final String exchangeName = 'notifikasi_exc';
   final String routingPush = 'pesan>page1';
   final String routingRecevi = 'pesan>page2';
@@ -21,7 +21,7 @@ class SendMesege2Controller extends GetxController {
   bool durable = true;
   RxList<ModelChat> receivedMessages = <ModelChat>[].obs;
 
-  Queue? _queue;
+  Queue? queue;
   @override
   void onInit() {
     super.onInit();
@@ -40,10 +40,10 @@ class SendMesege2Controller extends GetxController {
       receivedMessages.add(chatMessage);
       exchange.publish(messageMap, routingPush);
 
-      print('Sent: $message');
+      debugPrint('Sent: $message');
       return true;
     } catch (e) {
-      print('Error sending message: $e');
+      debugPrint('Error sending message: $e');
       return false;
     }
   }
@@ -90,7 +90,7 @@ class SendMesege2Controller extends GetxController {
       _channel = await _client!.channel();
 
       if (_channel != null) {
-        print("connected");
+        debugPrint("connected");
         textConnection.value = "Connected";
       } else {
         textConnection.value = "Failed to connect queue";
@@ -100,25 +100,25 @@ class SendMesege2Controller extends GetxController {
         ExchangeType.DIRECT, // Type of the exchange
         durable: true, // Make the exchange durable
       );
-      print("nama exchange: ${exchange.name}");
-      print("type exchange: ${exchange.type}");
-      print(" ");
+      debugPrint("nama exchange: ${exchange.name}");
+      debugPrint("type exchange: ${exchange.type}");
+      debugPrint(" ");
       // Store queue reference
-      Queue _queue = await _channel!.queue(
-        _queueName,
+      Queue queue = await _channel!.queue(
+        queueName,
         durable: durable,
         arguments: {
           'x-queue-type': 'quorum',
         },
       );
 
-      await _queue.bind(exchange, routingRecevi);
+      await queue.bind(exchange, routingRecevi);
 
-      print("queue name: ${_queue.name}");
+      debugPrint("queue name: ${queue.name}");
 
       // Store queue reference
-      _queue = await _channel!.queue(
-        _queueName,
+      queue = await _channel!.queue(
+        queueName,
         durable: durable,
         arguments: {
           'x-queue-type': 'quorum',
@@ -126,10 +126,10 @@ class SendMesege2Controller extends GetxController {
       );
 
       // Konsumsi pesan dari queue utama
-      _consumer = await _queue!.consume();
+      _consumer = await queue!.consume();
       _consumer!.listen((AmqpMessage message) {
-        print('Received: ${message.payloadAsString}');
-        print('replyTo: ${message.properties?.replyTo}');
+        debugPrint('Received: ${message.payloadAsString}');
+        debugPrint('replyTo: ${message.properties?.replyTo}');
 
         if (message.payloadAsString != "true" &&
             message.payloadAsString != "false") {
@@ -141,12 +141,12 @@ class SendMesege2Controller extends GetxController {
         } else if (message.payloadAsString == "false") {
           typing.value = false; // Sembunyikan "Mengetik"
         } else {
-          print('No reply-to property specified in the incoming message');
+          debugPrint('No reply-to property specified in the incoming message');
         }
       });
     } catch (e) {
       textConnection.value = "Connection Failed ❌";
-      print('Error connecting to RabbitMQ: $e');
+      debugPrint('Error connecting to RabbitMQ: $e');
     }
   }
 
