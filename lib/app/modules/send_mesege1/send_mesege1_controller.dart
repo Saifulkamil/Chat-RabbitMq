@@ -1,8 +1,6 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:dart_amqp/dart_amqp.dart';
-import 'package:encrypt/encrypt.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:rabbitmq_client/app/data/local.dart';
@@ -40,7 +38,7 @@ class SendMesege1Controller extends GetxController {
   void onInit() {
     // Initialize them in onInit
     key = encrypt.Key.fromUtf8('my 32 length key................');
-    iv = encrypt.IV.fromLength(16);
+    iv = encrypt.IV.fromBase64('ogI7pKKJUwm6YWMRj7jFQw==');
     encrypter = encrypt.Encrypter(
         encrypt.AES(key, mode: encrypt.AESMode.cbc, padding: 'PKCS7'));
 
@@ -67,15 +65,9 @@ class SendMesege1Controller extends GetxController {
   }
 
   Future<bool> sendMessage(String message) async {
-    final plainText = message;
-
-    final textEncrypted = encrypter.encrypt(plainText, iv: iv);
+    final textEncrypted = encrypter.encrypt(message, iv: iv);
 
     final decryptedMessage = encrypter.decrypt(textEncrypted, iv: iv);
-
-    print("Original message: $plainText");
-    print("Encrypted base64: ${textEncrypted.base64}");
-    print("Test decrypt: ${encrypter.decrypt(textEncrypted, iv: iv)}");
 
     if (datadiri!.isNotEmpty) {
       final int currentId = id++;
@@ -83,7 +75,7 @@ class SendMesege1Controller extends GetxController {
         "id": currentId,
         "sender": datadiri,
         'message': textEncrypted.base64,
-        'publicKey': 'publicKey',
+        'publicKey': "publicKey",
         'status': false,
         'isRead': false // Add isRead field
       };
@@ -126,24 +118,9 @@ class SendMesege1Controller extends GetxController {
   // Add new method to mark messages as read
   Future<void> markMessageAsRead(ModelChat message) async {
     if (message.sender != datadiri) {
-      print("Received encrypted: ${message.message}");
-      print("Current key: ${key.base64}");
-      print("Current IV: ${iv.base64}");
-    
+      // Ekstrak IV dari pesan
       try {
-        final encrypted = encrypt.Encrypted.fromBase64(message.message!);
-        final decryptedMessage = encrypter.decrypt(encrypted, iv: iv);
-        print("Decrypted success: $decryptedMessage");
-
-        final decryptedChat = ModelChat(
-            id: message.id,
-            sender: message.sender,
-            message: decryptedMessage,
-            publicKey: message.publicKey,
-            status: message.status,
-            isRead: message.isRead);
-
-        receivedMessages.add(decryptedChat);
+        receivedMessages.add(message);
         final Map<String, dynamic> readStatusMap = {
           "id": message.id,
           "sender": message.sender,
@@ -163,12 +140,10 @@ class SendMesege1Controller extends GetxController {
         }
       } catch (e) {
         print("Detail error: $e");
-        print("Encryption setup:");
-        print("- Key length: ${key.bytes.length}");
-        print("- IV length: ${iv.bytes.length}");
       }
     }
   }
+
   Future<bool> typingOn() async {
     try {
       final Exchange exchange = await _channel!
@@ -274,8 +249,18 @@ class SendMesege1Controller extends GetxController {
                   chat.status!.value = true;
                   chat.isRead!.value = true;
                 }
+                final encrypted =
+                    encrypt.Encrypted.fromBase64(receivedChatMessage.message!);
+                final decryptedMessage = encrypter.decrypt(encrypted, iv: iv);
 
-                await markMessageAsRead(receivedChatMessage);
+                final decryptedChat = ModelChat(
+                    id: receivedChatMessage.id,
+                    sender: receivedChatMessage.sender,
+                    message: decryptedMessage,
+                    publicKey: receivedChatMessage.publicKey,
+                    status: receivedChatMessage.status,
+                    isRead: receivedChatMessage.isRead);
+                await markMessageAsRead(decryptedChat);
               } catch (e) {
                 debugPrint('Error decoding message: $e');
               }
