@@ -23,9 +23,12 @@ class SendMesege1Controller extends GetxController {
   Client? _client;
   Channel? _channel;
   Consumer? _consumer;
+  int id = 1;
   bool durable = true;
   String? datadiri;
   RxList<ModelChat> receivedMessages = <ModelChat>[].obs;
+
+  ModelChat? modelChat;
 
   @override
   void onInit() {
@@ -53,9 +56,14 @@ class SendMesege1Controller extends GetxController {
 
   Future<bool> sendMessage(String message) async {
     if (datadiri!.isNotEmpty) {
+      final int currentId = id++;
       final Map<String, dynamic> messageMap = {
+        "id": currentId,
         "sender": datadiri,
         'message': message,
+        'publicKey': 'publicKey',
+        'status': false,
+        'isRead': false // Add isRead field
       };
       try {
         final Exchange exchange = await _channel!
@@ -64,20 +72,46 @@ class SendMesege1Controller extends GetxController {
         receivedMessages.add(chatMessage);
         if (datadiri == "admin") {
           exchange.publish(messageMap, "$routingKey>$user");
-          debugPrint('admin Sent: $message');
+          debugPrint('admin Sent: $messageMap');
         } else {
           exchange.publish(messageMap, "$routingKey>$admin");
-          debugPrint('user Sent: $message');
+          debugPrint('user Sent: $messageMap');
         }
 
         return true;
-      } catch (e) {
+      }
+      
+       catch (e) {
         debugPrint('Error sending message: $e');
         return false;
       }
     } else {
       debugPrint('Data profile is empty. Cannot send message.');
       return false;
+    }
+  }
+
+  // Add new method to mark messages as read
+  Future<void> markMessageAsRead(ModelChat message) async {
+    if (message.sender != datadiri) {
+      receivedMessages.add(message);
+      final Map<String, dynamic> readStatusMap = {
+        "id": message.id,
+        "sender": message.sender,
+        "message": message.message,
+        "publicKey": message.publicKey,
+        "status": true,
+        "isRead": true
+      };
+
+      final Exchange exchange = await _channel!
+          .exchange(exchangeName, ExchangeType.DIRECT, durable: true);
+
+      if (datadiri == "admin") {
+        exchange.publish(readStatusMap, "$routingKey>$user");
+      } else {
+        exchange.publish(readStatusMap, "$routingKey>$admin");
+      }
     }
   }
 
@@ -164,28 +198,25 @@ class SendMesege1Controller extends GetxController {
 
       debugPrint("queue name: ${queue.name}");
 
-      // Konsumsi pesan dari queue utama
       _consumer = await queue.consume();
-      _consumer!.listen((AmqpMessage message) {
-        debugPrint('Received: ${message.payloadAsString}');
+      _consumer!.listen((AmqpMessage message) async {
+        debugPrint('Received:sdfsdfsdf ${message.payloadAsString}');
         debugPrint('replyTo: ${message.properties?.replyTo}');
-
-        // Jika pesan adalah "true" atau "false", tidak perlu decode JSON
         if (message.payloadAsString == "true") {
-          typing.value = true; // Tampilkan "Mengetik"
+          typing.value = true;
         } else if (message.payloadAsString == "false") {
-          typing.value = false; // Sembunyikan "Mengetik"
+          typing.value = false;
         } else {
-          // Pesan berupa JSON yang valid, dekode pesan
           try {
             Map<String, dynamic> jsonData = jsonDecode(message.payloadAsString);
-            String sender = jsonData['sender'];
-
-            // Periksa jika sender bukan 'datadiri'
-            if (datadiri != sender) {
-              ModelChat chatMessage = ModelChat.fromJson(jsonData);
-              receivedMessages.add(chatMessage);
+            ModelChat receivedChatMessage = ModelChat.fromJson(jsonData);
+            for (var chat in receivedMessages) {
+              chat.status!.value = true;
+              chat.isRead!.value = true;
             }
+            
+
+            await markMessageAsRead(receivedChatMessage);
           } catch (e) {
             debugPrint('Error decoding message: $e');
           }

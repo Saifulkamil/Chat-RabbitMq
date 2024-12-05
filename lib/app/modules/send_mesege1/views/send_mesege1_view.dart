@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
 
+import '../../../data/models/model_chat.dart';
 import '../controllers/send_mesege1_controller.dart';
 
 class SendMesege1View extends GetView<SendMesege1Controller> {
@@ -50,17 +51,19 @@ class SendMesege1View extends GetView<SendMesege1Controller> {
                         .shrink(); // Hindari error dengan widget kosong
                   }
 
-                  final data = controller.receivedMessages[
-                      controller.receivedMessages.length - 1 - messageIndex];
+                  Rx<ModelChat> data = controller
+                      .receivedMessages[
+                          controller.receivedMessages.length - 1 - messageIndex]
+                      .obs;
 
                   return Row(
-                    mainAxisAlignment: data.sender == controller.datadiri
+                    mainAxisAlignment: data.value.sender == controller.datadiri
                         ? MainAxisAlignment.end
                         : MainAxisAlignment.start,
                     children: [
                       Flexible(
                         child: Card(
-                          color: data.sender == controller.datadiri
+                          color: data.value.sender == controller.datadiri
                               ? const Color.fromARGB(255, 34, 128, 37)
                               : Colors.white,
                           child: Padding(
@@ -69,17 +72,19 @@ class SendMesege1View extends GetView<SendMesege1Controller> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  data.message!,
+                                  data.value.message!,
                                   style: TextStyle(
-                                      color: data.sender == controller.datadiri
+                                      color: data.value.sender ==
+                                              controller.datadiri
                                           ? Colors.white
                                           : const Color.fromARGB(
                                               255, 34, 128, 37)),
                                 ),
                                 Text(
-                                  'Message #${data.sender}',
+                                  'Message #${data.value.sender}',
                                   style: TextStyle(
-                                      color: data.sender == controller.datadiri
+                                      color: data.value.sender ==
+                                              controller.datadiri
                                           ? Colors.white
                                           : const Color.fromARGB(
                                               255, 34, 128, 37)),
@@ -89,6 +94,20 @@ class SendMesege1View extends GetView<SendMesege1Controller> {
                           ),
                         ),
                       ),
+                      data.value.sender == controller.datadiri
+                          ? Obx(() => Icon(
+                                data.value.isRead?.value == true
+                                    ? Icons.done_all
+                                    : data.value.status?.value == true
+                                        ? Icons.check_circle
+                                        : Icons.check,
+                                color: data.value.isRead?.value == true
+                                    ? Colors.blue
+                                    : data.value.status?.value == true
+                                        ? Colors.green
+                                        : Colors.grey,
+                              ))
+                          : const SizedBox(),
                     ],
                   );
                 },
