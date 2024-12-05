@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:rabbitmq_client/app/data/local.dart';
 
-import '../../../data/models/model_chat.dart';
-import '../../../data/response_call.dart';
+import '../../data/models/model_chat.dart';
+import '../../data/response_call.dart';
 
 class SendMesege1Controller extends GetxController {
   // final String typingQueue = "tippingqueue";
@@ -29,6 +29,7 @@ class SendMesege1Controller extends GetxController {
   RxList<ModelChat> receivedMessages = <ModelChat>[].obs;
 
   ModelChat? modelChat;
+  ResponseCall rabbitmqCall = ResponseCall.iddle("iddle");
 
   @override
   void onInit() {
@@ -79,9 +80,7 @@ class SendMesege1Controller extends GetxController {
         }
 
         return true;
-      }
-      
-       catch (e) {
+      } catch (e) {
         debugPrint('Error sending message: $e');
         return false;
       }
@@ -156,7 +155,7 @@ class SendMesege1Controller extends GetxController {
     }
   }
 
-  Future<void> connectRabbitMQ() async {
+  Future<bool> connectRabbitMQ() async {
     try {
       _client = Client(
           settings: ConnectionSettings(
@@ -170,6 +169,8 @@ class SendMesege1Controller extends GetxController {
 
       if (_channel != null) {
         debugPrint("connected");
+        rabbitmqCall = ResponseCall.completed("completed");
+
         textConnection.value = "Connected";
       } else {
         textConnection.value = "Failed to connect queue";
@@ -190,41 +191,53 @@ class SendMesege1Controller extends GetxController {
           'x-queue-type': 'quorum',
         },
       );
-      if (datadiri == "admin") {
-        await queue.bind(exchange, "$user>$routingKey");
-      } else {
-        await queue.bind(exchange, "$admin>$routingKey");
-      }
 
-      debugPrint("queue name: ${queue.name}");
-
-      _consumer = await queue.consume();
-      _consumer!.listen((AmqpMessage message) async {
-        debugPrint('Received:sdfsdfsdf ${message.payloadAsString}');
-        debugPrint('replyTo: ${message.properties?.replyTo}');
-        if (message.payloadAsString == "true") {
-          typing.value = true;
-        } else if (message.payloadAsString == "false") {
-          typing.value = false;
+      if (rabbitmqCall.status == Status.completed) {
+        if (datadiri == "admin") {
+          await queue.bind(exchange, "$user>$routingKey");
         } else {
-          try {
-            Map<String, dynamic> jsonData = jsonDecode(message.payloadAsString);
-            ModelChat receivedChatMessage = ModelChat.fromJson(jsonData);
-            for (var chat in receivedMessages) {
-              chat.status!.value = true;
-              chat.isRead!.value = true;
-            }
-            
-
-            await markMessageAsRead(receivedChatMessage);
-          } catch (e) {
-            debugPrint('Error decoding message: $e');
-          }
+          await queue.bind(exchange, "$admin>$routingKey");
         }
-      });
+
+        debugPrint("queue name: ${queue.name}");
+
+        _consumer = await queue.consume();
+        _consumer!.listen(
+          (AmqpMessage message) async {
+            debugPrint('Received:sdfsdfsdf ${message.payloadAsString}');
+            debugPrint('replyTo: ${message.properties?.replyTo}');
+            if (message.payloadAsString == "true") {
+              typing.value = true;
+            } else if (message.payloadAsString == "false") {
+              typing.value = false;
+            } else {
+              try {
+                Map<String, dynamic> jsonData =
+                    jsonDecode(message.payloadAsString);
+                ModelChat receivedChatMessage = ModelChat.fromJson(jsonData);
+                for (var chat in receivedMessages) {
+                  chat.status!.value = true;
+                  chat.isRead!.value = true;
+                }
+
+                await markMessageAsRead(receivedChatMessage);
+              } catch (e) {
+                debugPrint('Error decoding message: $e');
+              }
+            }
+            // Return true jika koneksi berhasil
+          },
+          onDone: () {
+            debugPrint('Consumer done');
+          },
+        );
+      }
+      return true;
     } catch (e) {
       textConnection.value = "Connection Failed ❌";
       debugPrint('Error connecting to RabbitMQ: $e');
+      // Return true jika koneksi berhasil
+      return false;
     }
   }
 

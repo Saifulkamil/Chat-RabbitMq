@@ -4,8 +4,11 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:get/get.dart';
+import 'package:rabbitmq_client/app/data/local.dart';
+import 'package:rabbitmq_client/app/services/rabbitmq_service.dart';
 
-class HomeController extends GetxController {
+
+class BackgroundService {
   RxString seriveText = "Service stop".obs;
 
   Future<void> initializeService() async {
@@ -37,6 +40,8 @@ class HomeController extends GetxController {
 // Fungsi top-level untuk background service
 @pragma('vm:entry-point')
 void onServiceStart(ServiceInstance service) async {
+  String? datadiri;
+  RabbitmqService rabbitmqService = RabbitmqService();
   var text = "service background";
 
   DartPluginRegistrant.ensureInitialized();
@@ -55,12 +60,28 @@ void onServiceStart(ServiceInstance service) async {
   service.on('setAsStop').listen((event) {
     service.stopSelf();
   });
-
+  bool isConnected = false; // Variabel untuk memantau status koneksi
   Timer.periodic(
-    Duration(seconds: 1),
+    const Duration(seconds: 1),
     (timer) async {
       debugPrint(text);
-      if (service is AndroidServiceInstance) {}
+      if (service is AndroidServiceInstance) {
+        debugPrint(text);
+
+        final data = await LocalStorage.getDataMe();
+        if (data.isNotEmpty) {
+          datadiri = data;
+          if (isConnected == true) {
+            isConnected = true; // Set connected setelah berhasil terkoneksi
+            await rabbitmqService.connectRabbitMQBGServer(datadiri!);
+          } else {
+            debugPrint("already connected");
+          }
+        } else {
+          debugPrint("no data diri");
+        }
+      
+      }
       debugPrint(text);
       service.invoke("update");
     },

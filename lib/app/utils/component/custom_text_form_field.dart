@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:rabbitmq_client/colors.dart';
+
+import '../colors.dart';
 
 class CustomTextFormField extends StatelessWidget {
   final String text;
@@ -50,7 +51,7 @@ class CustomTextFormField extends StatelessWidget {
         cursorColor: greyColor,
         keyboardType: keyboard,
         decoration: InputDecoration(
-          contentPadding: EdgeInsets.only(left: 15),
+          contentPadding: const EdgeInsets.only(left: 15),
           suffixIcon: iconsuffix,
           hintText: text,
           hintStyle: ColorApp.hintTextStyle(context)

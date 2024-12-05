@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:rabbitmq_client/colors.dart';
+
+import '../colors.dart';
+
 
 
 // Icon = jika menggunakan Icon pada child

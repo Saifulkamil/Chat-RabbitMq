@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
 
-import '../../../data/models/model_chat.dart';
-import '../controllers/send_mesege1_controller.dart';
+import '../../data/models/model_chat.dart';
+import 'send_mesege1_controller.dart';
 
 class SendMesege1View extends GetView<SendMesege1Controller> {
   const SendMesege1View({super.key});

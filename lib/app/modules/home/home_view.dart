@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 
 import 'package:get/get.dart';
-import 'package:rabbitmq_client/app/modules/home/views/notif.dart';
 import 'package:rabbitmq_client/app/routes/app_pages.dart';
 
-import '../controllers/home_controller.dart';
+import '../../data/response_call.dart';
+import 'home_controller.dart';
 
 class HomeView extends GetView<HomeController> {
   const HomeView({super.key});
@@ -28,20 +28,20 @@ class HomeView extends GetView<HomeController> {
               const SizedBox(
                 height: 50,
               ),
-              SizedBox(
+              const SizedBox(
                 height: 100,
               ),
               ElevatedButton(
                 onPressed: () {
                   FlutterBackgroundService().invoke("setAsForeground");
                 },
-                child: Text("Foreground service"),
+                child: const Text("Foreground service"),
               ),
               ElevatedButton(
                 onPressed: () {
                   FlutterBackgroundService().invoke("setAsBackground");
                 },
-                child: Text("Background service"),
+                child: const Text("Background service"),
               ),
               Obx(() => ElevatedButton(
                     onPressed: () async {
@@ -53,17 +53,21 @@ class HomeView extends GetView<HomeController> {
                         service.startService();
                       }
                       if (!isRunning) {
-                        controller.seriveText.value = "Service Stop";
+                        controller.backgroundService.seriveText.value =
+                            "Service Stop";
+                        controller.rabbitmqService.rabbitmqCall =
+                            ResponseCall.iddle("iddle");
                       } else {
-                        controller.seriveText.value = "Service Start";
+                        controller.backgroundService.seriveText.value =
+                            "Service Start";
                       }
                     },
-                    child: Text(controller.seriveText.value),
+                    child: Text(controller.backgroundService.seriveText.value),
                   )),
               ElevatedButton(
                 onPressed: () {
-                  NotificationService.showNotification(
-                      23, "haiii", "notif ini sepol", "content");
+                  // NotificationService.showNotification(
+                  //     23, "haiii", "notif ini sepol", "content");
                 },
                 child: const Text('Tampilkan Notifikasi'),
               ),

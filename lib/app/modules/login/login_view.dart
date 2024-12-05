@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
-import 'package:rabbitmq_client/app/modules/home/controllers/home_controller.dart';
 import 'package:rabbitmq_client/app/utils/component/custom_elevated_buttom.dart';
-import 'package:rabbitmq_client/colors.dart';
+import 'package:rabbitmq_client/app/services/backgorund_service.dart';
 
-import '../../../utils/component/custom_text_form_field.dart';
-import '../controllers/login_controller.dart';
+import '../../utils/colors.dart';
+import '../../utils/component/custom_text_form_field.dart';
+import 'login_controller.dart';
 
 class LoginView extends GetView<LoginController> {
   const LoginView({super.key});
@@ -85,7 +85,7 @@ class LoginView extends GetView<LoginController> {
                         ),
                         CustomTextFormField(
                             textEditingController: controller.emailC,
-                            iconPrefix: Icon(
+                            iconPrefix: const Icon(
                               Icons.perm_identity_rounded,
                               color: greyColor,
                             ),
@@ -110,9 +110,8 @@ class LoginView extends GetView<LoginController> {
                     fontWeight: bold,
                     colorText: coklatBlackMain,
                     onPressed: () async {
-                      final homeC = Get.put<HomeController>(HomeController(),
-                          permanent: true);
-                      await homeC.initializeService();
+                      BackgroundService backgroundService = BackgroundService();
+                      await backgroundService.initializeService();
 
                       controller.login(controller.emailC.text);
                     },

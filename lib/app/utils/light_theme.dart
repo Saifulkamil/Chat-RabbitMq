@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:rabbitmq_client/colors.dart';
+
+import 'colors.dart';
 
 ThemeData lightTheme = ThemeData(
     brightness: Brightness.light,
