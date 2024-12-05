@@ -1,12 +1,14 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dart_amqp/dart_amqp.dart';
+import 'package:encrypt/encrypt.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:rabbitmq_client/app/data/local.dart';
-
 import '../../data/models/model_chat.dart';
 import '../../data/response_call.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
 
 class SendMesege1Controller extends GetxController {
   // final String typingQueue = "tippingqueue";
@@ -31,8 +33,17 @@ class SendMesege1Controller extends GetxController {
   ModelChat? modelChat;
   ResponseCall rabbitmqCall = ResponseCall.iddle("iddle");
 
+  late final encrypt.Key key;
+  late final encrypt.IV iv;
+  late final encrypt.Encrypter encrypter;
   @override
   void onInit() {
+    // Initialize them in onInit
+    key = encrypt.Key.fromUtf8('my 32 length key................');
+    iv = encrypt.IV.fromLength(16);
+    encrypter = encrypt.Encrypter(
+        encrypt.AES(key, mode: encrypt.AESMode.cbc, padding: 'PKCS7'));
+
     super.onInit();
     connectRabbitMQ();
     fetchDataProfile();
@@ -56,12 +67,31 @@ class SendMesege1Controller extends GetxController {
   }
 
   Future<bool> sendMessage(String message) async {
+    final plainText = message;
+
+    final textEncrypted = encrypter.encrypt(plainText, iv: iv);
+
+    final decryptedMessage = encrypter.decrypt(textEncrypted, iv: iv);
+
+    print("Original message: $plainText");
+    print("Encrypted base64: ${textEncrypted.base64}");
+    print("Test decrypt: ${encrypter.decrypt(textEncrypted, iv: iv)}");
+
     if (datadiri!.isNotEmpty) {
       final int currentId = id++;
+      final Map<String, dynamic> messageMapEncrip = {
+        "id": currentId,
+        "sender": datadiri,
+        'message': textEncrypted.base64,
+        'publicKey': 'publicKey',
+        'status': false,
+        'isRead': false // Add isRead field
+      };
+
       final Map<String, dynamic> messageMap = {
         "id": currentId,
         "sender": datadiri,
-        'message': message,
+        'message': decryptedMessage,
         'publicKey': 'publicKey',
         'status': false,
         'isRead': false // Add isRead field
@@ -69,14 +99,17 @@ class SendMesege1Controller extends GetxController {
       try {
         final Exchange exchange = await _channel!
             .exchange(exchangeName, ExchangeType.DIRECT, durable: true);
+
         ModelChat chatMessage = ModelChat.fromJson(messageMap);
+
         receivedMessages.add(chatMessage);
+
         if (datadiri == "admin") {
-          exchange.publish(messageMap, "$routingKey>$user");
-          debugPrint('admin Sent: $messageMap');
+          exchange.publish(messageMapEncrip, "$routingKey>$user");
+          debugPrint('admin Sent: $messageMapEncrip');
         } else {
-          exchange.publish(messageMap, "$routingKey>$admin");
-          debugPrint('user Sent: $messageMap');
+          exchange.publish(messageMapEncrip, "$routingKey>$admin");
+          debugPrint('user Sent: $messageMapEncrip');
         }
 
         return true;
@@ -93,27 +126,49 @@ class SendMesege1Controller extends GetxController {
   // Add new method to mark messages as read
   Future<void> markMessageAsRead(ModelChat message) async {
     if (message.sender != datadiri) {
-      receivedMessages.add(message);
-      final Map<String, dynamic> readStatusMap = {
-        "id": message.id,
-        "sender": message.sender,
-        "message": message.message,
-        "publicKey": message.publicKey,
-        "status": true,
-        "isRead": true
-      };
+      print("Received encrypted: ${message.message}");
+      print("Current key: ${key.base64}");
+      print("Current IV: ${iv.base64}");
+    
+      try {
+        final encrypted = encrypt.Encrypted.fromBase64(message.message!);
+        final decryptedMessage = encrypter.decrypt(encrypted, iv: iv);
+        print("Decrypted success: $decryptedMessage");
 
-      final Exchange exchange = await _channel!
-          .exchange(exchangeName, ExchangeType.DIRECT, durable: true);
+        final decryptedChat = ModelChat(
+            id: message.id,
+            sender: message.sender,
+            message: decryptedMessage,
+            publicKey: message.publicKey,
+            status: message.status,
+            isRead: message.isRead);
 
-      if (datadiri == "admin") {
-        exchange.publish(readStatusMap, "$routingKey>$user");
-      } else {
-        exchange.publish(readStatusMap, "$routingKey>$admin");
+        receivedMessages.add(decryptedChat);
+        final Map<String, dynamic> readStatusMap = {
+          "id": message.id,
+          "sender": message.sender,
+          "message": message.message,
+          "publicKey": message.publicKey,
+          "status": true,
+          "isRead": true
+        };
+
+        final Exchange exchange = await _channel!
+            .exchange(exchangeName, ExchangeType.DIRECT, durable: true);
+
+        if (datadiri == "admin") {
+          exchange.publish(readStatusMap, "$routingKey>$user");
+        } else {
+          exchange.publish(readStatusMap, "$routingKey>$admin");
+        }
+      } catch (e) {
+        print("Detail error: $e");
+        print("Encryption setup:");
+        print("- Key length: ${key.bytes.length}");
+        print("- IV length: ${iv.bytes.length}");
       }
     }
   }
-
   Future<bool> typingOn() async {
     try {
       final Exchange exchange = await _channel!
@@ -204,7 +259,7 @@ class SendMesege1Controller extends GetxController {
         _consumer = await queue.consume();
         _consumer!.listen(
           (AmqpMessage message) async {
-            debugPrint('Received:sdfsdfsdf ${message.payloadAsString}');
+            debugPrint('Received: ${message.payloadAsString}');
             debugPrint('replyTo: ${message.properties?.replyTo}');
             if (message.payloadAsString == "true") {
               typing.value = true;
